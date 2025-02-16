@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>reCAPTCHA RTA</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css">
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.3.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, query, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/11.3.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      projectId: "recaptcha-rta"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    let startTime = 0;
+    let timerInterval;
+    let solvedCount = 0;
+    let currentCaptchaIndex = 0;
+    const widgetCount = 3;
+
+    function startTimer() {
+      startTime = performance.now();
+      timerInterval = setInterval(() => {
+        let elapsedTime = (performance.now() - startTime) / 1000;
+        document.getElementById('timer').textContent = elapsedTime.toFixed(2) + 's';
+      }, 10);
+    }
+
+    function stopTimer() {
+      clearInterval(timerInterval);
+      let finalTime = ((performance.now() - startTime) / 1000).toFixed(2);
+      document.getElementById('timer').textContent = `Final Time: ${finalTime}s`;
+      saveRecord(finalTime);
+
+      const container = document.getElementById('captcha-container');
+      container.style.display = 'none';
+    }
+
+    async function saveRecord(time) {
+      let playerName = document.getElementById("player-name").value.trim();
+      if (!playerName) {
+        alert("名前を入力してください！");
+        return;
+      }
+
+      localStorage.setItem("playerName", playerName);
+
+      try {
+        await addDoc(collection(db, 'records'), {
+          user: playerName,
+          time: parseFloat(time)
+        });
+        console.log("記録を保存しました");
+        loadRanking();
+      } catch (error) {
+        console.error("エラー:", error);
+      }
+    }
+
+    async function loadRanking() {
+      const rankingQuery = query(collection(db, 'records'), orderBy('time', 'asc'), limit(100));
+      try {
+        const snapshot = await getDocs(rankingQuery);
+        const rankingList = document.getElementById('ranking-list');
+        rankingList.innerHTML = "";
+
+        let rank = 1;
+        snapshot.forEach(doc => {
+          const data = doc.data();
+          const listItem = document.createElement("li");
+          listItem.textContent = `${rank}st. ${data.user}: ${data.time}s`;
+          rankingList.appendChild(listItem);
+          rank++;
+        });
+      } catch (error) {
+        console.error("ランキング取得エラー:", error);
+      }
+    }
+
+    function createCaptchaElement() {
+      const container = document.getElementById('captcha-container');
+      container.innerHTML = '';
+      const div = document.createElement('div');
+      div.id = `widget${currentCaptchaIndex}`;
+      div.style.marginBottom = '20px';
+      container.appendChild(div);
+    }
+
+    function renderCaptcha() {
+      createCaptchaElement();
+      if (typeof grecaptcha !== 'undefined') {
+        grecaptcha.render(`widget${currentCaptchaIndex}`, {
+          sitekey: '6LdZrtgqAAAAAMWfnriCN5yxjUNYmz_XBDthqSvT',
+          callback: () => {
+            solvedCount++;
+            document.getElementById('progress').textContent = `${solvedCount}/${widgetCount}`;
+
+            if (solvedCount === widgetCount) {
+              stopTimer();
+            } else {
+              currentCaptchaIndex++;
+              renderCaptcha();
+            }
+          }
+        });
+      } else {
+        console.error("reCAPTCHA API が正しく読み込まれていません");
+      }
+    }
+
+    function startGame() {
+      let playerName = document.getElementById("player-name").value.trim();
+      if (!playerName) {
+        alert("名前を入力してください！");
+        return;
+      }
+      document.getElementById('timer').textContent = '0.00s';
+      solvedCount = 0;
+      currentCaptchaIndex = 0;
+      document.getElementById('progress').textContent = `0/${widgetCount}`;
+      let count = 3;
+      document.getElementById('start-btn').textContent = `Ready... ${count}`;
+      const countdown = setInterval(() => {
+        count--;
+        if (count > 0) {
+          document.getElementById('start-btn').textContent = `Ready... ${count}`;
+        } else {
+          clearInterval(countdown);
+          document.getElementById('start-btn').textContent = 'GO!';
+          startTimer();
+          renderCaptcha();
+          setTimeout(() => {
+            document.getElementById('start-btn').textContent = 'Restart';
+          }, 1000);
+        }
+      }, 1000);
+    }
+
+    function loadPlayerName() {
+      const savedName = localStorage.getItem("playerName");
+      if (savedName) {
+        document.getElementById("player-name").value = savedName;
+      }
+    }
+
+    document.getElementById('start-btn').addEventListener('click', startGame);
+    window.onload = () => {
+      loadRanking();
+      loadPlayerName();
+    };
+  </script>
+</head>
+
+<body>
+  <section class="hero is-primary">
+    <div class="hero-body has-text-centered">
+      <p class="title has-text-white">reCAPTCHA RTA</p>
+      <p class="subtitle has-text-white">タイムを計測して、最速のタイムを競おう！</p>
+    </div>
+  </section>
+  <div class="container has-text-centered">
+    <div class="box">
+      <div class="field">
+        <label for="player-name" class="label">プレイヤー名</label>
+        <div class="control">
+          <input id="player-name" class="input is-medium" type="text" placeholder="プレイヤー名を入力してください（本名などの個人情報は入力しないでください。）">
+        </div>
+      </div>
+      <button id="start-btn" class="button is-danger is-large is-fullwidth">Start!</button>
+    </div>
+
+    <p class="title is-3" id="timer">0.00s</p>
+    <p class="subtitle is-4" id="progress">0/3</p>
+
+    <div id="captcha-container" style="margin-top: 20px; width: 300px; margin-left: auto; margin-right: auto;"></div>
+
+    <hr>
+    <h2 class="title is-4">ランキング</h2>
+    <ul id="ranking-list" class="content" style="list-style-type: none; padding-left: 0;">読み込み中…</ul>
+  </div>
+  <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+</body>
+
+</html>
