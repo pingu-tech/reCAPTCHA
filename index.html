@@ -5,6 +5,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>reCAPTCHA RTA</title>
+  <meta name="description" content="reCAPTCHAを3回クリアするのにかかる時間を競うサイト">
+  <link rel="icon" type="image/png" href="https://pingu-tech.github.io/reCAPTCHA/icon/favicon-96x96.png" sizes="96x96">
+  <link rel="icon" type="image/svg+xml" href="https://pingu-tech.github.io/reCAPTCHA/icon/favicon.svg">
+  <link rel="shortcut icon" href="https://pingu-tech.github.io/reCAPTCHA/icon/favicon.ico">
+  <link rel="apple-touch-icon" sizes="180x180" href="https://pingu-tech.github.io/reCAPTCHA/icon/apple-touch-icon.png">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css">
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.3.0/firebase-app.js";
@@ -44,7 +49,7 @@
     async function saveRecord(time) {
       let playerName = document.getElementById("player-name").value.trim();
       if (!playerName) {
-        alert("名前を入力してください！");
+        alert("名前を入力してください");
         return;
       }
 
@@ -168,17 +173,14 @@
       <div class="field">
         <label for="player-name" class="label">プレイヤー名</label>
         <div class="control">
-          <input id="player-name" class="input is-medium" type="text" placeholder="プレイヤー名を入力してください（本名などの個人情報は入力しないでください。）">
+          <input id="player-name" class="input is-medium" type="text" placeholder="本名は使わないでください">
         </div>
       </div>
-      <button id="start-btn" class="button is-danger is-large is-fullwidth">Start!</button>
+      <button id="start-btn" class="button is-danger is-large has-text-white is-fullwidth">Start!</button>
     </div>
-
-    <p class="title is-3" id="timer">0.00s</p>
-    <p class="subtitle is-4" id="progress">0/3</p>
-
+    <p class="title is-3" id="timer"></p>
+    <p class="subtitle is-4" id="progress"></p>
     <div id="captcha-container" style="margin-top: 20px; width: 300px; margin-left: auto; margin-right: auto;"></div>
-
     <hr>
     <h2 class="title is-4">ランキング</h2>
     <ul id="ranking-list" class="content" style="list-style-type: none; padding-left: 0;">読み込み中…</ul>
